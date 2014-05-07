@@ -20,4 +20,6 @@ fp.on_die = function() {
 if (flashproxy_should_disable())
     fp.disable();
 
+fp.keep_stats = true;
+
 fp.start();

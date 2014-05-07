@@ -90,6 +90,11 @@ var debug_div;
 /* HEADLESS is true if we are running not in a browser with a DOM. */
 var HEADLESS = typeof(document) === "undefined";
 
+/* localStorage keys used for stat tracking */
+var OVERALL_CONNS_KEY = 'FLASHPROXY_overall_connections';
+var OVERALL_DATA_TRANSMITTED_KEY = 'FLASHPROXY_overall_data_sent';
+var DAY_CONN_COUNT_KEY = 'FLASHPROXY_day_connections';
+
 var cookies;
 if (HEADLESS) {
     cookies = {};
@@ -499,6 +504,7 @@ function FlashProxy() {
     this.status = FlashProxy.Status.IDLE;
     this.on_proxy_start = this.on_proxy_end =
         this.on_disable = this.on_die = function() {};
+    this.keep_stats = false;
 
     this.start = function() {
         var client_addr;
@@ -682,7 +688,7 @@ function FlashProxy() {
     this.make_proxy_pair = function(client_addr, relay_addr) {
         var proxy_pair;
 
-        proxy_pair = new ProxyPair(client_addr, relay_addr, this.rate_limit);
+        proxy_pair = new ProxyPair(client_addr, relay_addr, this.rate_limit, this.keep_stats);
         this.proxy_pairs.push(proxy_pair);
         proxy_pair.cleanup_callback = function(event) {
             /* Delete from the list of active proxy pairs. */
@@ -763,7 +769,7 @@ FlashProxy.Status = {
 };
 
 /* An instance of a client-relay connection. */
-function ProxyPair(client_addr, relay_addr, rate_limit) {
+function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
     var MAX_BUFFER = 10 * 1024 * 1024;
 
     function log(s) {
@@ -776,6 +782,7 @@ function ProxyPair(client_addr, relay_addr, rate_limit) {
     this.client_addr = client_addr;
     this.relay_addr = relay_addr;
     this.rate_limit = rate_limit;
+    this.keep_stats = keep_stats;
 
     this.c2r_schedule = [];
     this.r2c_schedule = [];
@@ -816,6 +823,12 @@ function ProxyPair(client_addr, relay_addr, rate_limit) {
 
     this.relay_onopen_callback = function(event) {
         var ws = event.target;
+
+        if (this.keep_stats) {
+            var overall_conns = localStorage.getItem(OVERALL_CONNS_KEY);
+            localStorage.setItem(OVERALL_CONNS_KEY,
+                overall_conns ? parseInt(overall_conns) + 1 : 1);
+        }
 
         log(ws.label + ": connected.");
     }.bind(this);
@@ -901,6 +914,13 @@ function ProxyPair(client_addr, relay_addr, rate_limit) {
                 this.rate_limit.update(chunk.length);
                 this.relay_s.send(chunk);
                 busy = true;
+
+                // only track amount sent from client to relay?
+                if (this.keep_stats) {
+                    var overall_data_transd = localStorage.getItem(OVERALL_DATA_TRANSMITTED_KEY);
+                    localStorage.setItem(OVERALL_DATA_TRANSMITTED_KEY, overall_data_transd ?
+                        parseInt(overall_data_transd) + chunk.length : chunk.length);
+                }
             }
         }
 
