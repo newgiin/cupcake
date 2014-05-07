@@ -92,8 +92,11 @@ var HEADLESS = typeof(document) === "undefined";
 
 /* localStorage keys used for stat tracking */
 var OVERALL_CONNS_KEY = 'FLASHPROXY_overall_connections';
-var OVERALL_DATA_TRANSMITTED_KEY = 'FLASHPROXY_overall_data_sent';
-var DAY_CONN_COUNT_KEY = 'FLASHPROXY_day_connections';
+var OVERALL_DATA_TRANSD_KEY = 'FLASHPROXY_overall_data_transd';
+
+var LAST_DAY_KEY = 'FLASHPROXY_last_day';
+var DAY_CONNS_KEY = 'FLASHPROXY_day_connections';
+var DAY_DATA_TRANSD_KEY = 'FLASHPROXY_day_data_transd';
 
 var cookies;
 if (HEADLESS) {
@@ -825,9 +828,29 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
         var ws = event.target;
 
         if (this.keep_stats) {
+            /*
+            * Overall stats
+            */
             var overall_conns = localStorage.getItem(OVERALL_CONNS_KEY);
             localStorage.setItem(OVERALL_CONNS_KEY,
                 overall_conns ? parseInt(overall_conns) + 1 : 1);
+
+            /*
+            * Per day stats
+            */
+            var last_day = localStorage.getItem(LAST_DAY_KEY);
+            var d = new Date();
+            var curr_day = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+
+            if (last_day !== curr_day) {
+                localStorage.setItem(LAST_DAY_KEY, curr_day);
+                localStorage.removeItem(DAY_CONNS_KEY);
+                localStorage.removeItem(DAY_DATA_TRANSD_KEY);
+            }
+
+            var day_conns = localStorage.getItem(DAY_CONNS_KEY);
+            localStorage.setItem(DAY_CONNS_KEY,
+                day_conns ? parseInt(day_conns) + 1 : 1);
         }
 
         log(ws.label + ": connected.");
@@ -917,9 +940,29 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
 
                 // only track amount sent from client to relay?
                 if (this.keep_stats) {
-                    var overall_data_transd = localStorage.getItem(OVERALL_DATA_TRANSMITTED_KEY);
-                    localStorage.setItem(OVERALL_DATA_TRANSMITTED_KEY, overall_data_transd ?
+                    /*
+                    * Overall stats
+                    */
+                    var overall_data_transd = localStorage.getItem(OVERALL_DATA_TRANSD_KEY);
+                    localStorage.setItem(OVERALL_DATA_TRANSD_KEY, overall_data_transd ?
                         parseInt(overall_data_transd) + chunk.length : chunk.length);
+
+                    /*
+                    * Per day stats
+                    */
+                    var last_day = localStorage.getItem(LAST_DAY_KEY);
+                    var d = new Date();
+                    var curr_day = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+
+                    if (last_day !== curr_day) {
+                        localStorage.setItem(LAST_DAY_KEY, curr_day);
+                        localStorage.removeItem(DAY_CONNS_KEY);
+                        localStorage.removeItem(DAY_DATA_TRANSD_KEY);
+                    }
+
+                    var day_data_transd = localStorage.getItem(DAY_DATA_TRANSD_KEY);
+                    localStorage.setItem(DAY_DATA_TRANSD_KEY, day_data_transd ?
+                        parseInt(day_data_transd) + chunk.length : chunk.length);
                 }
             }
         }
