@@ -11,6 +11,13 @@ function main() {
 
     var day_conns = localStorage.getItem(bp.DAY_CONNS_KEY);
     var day_data_transd = localStorage.getItem(bp.DAY_DATA_TRANSD_KEY);
-    document.getElementById('day_conns').innerHTML = day_conns ? day_conns : 0;
-    document.getElementById('day_data_transd').innerHTML = day_data_transd ? day_data_transd / 1000 : 0;
+
+    var last_day = localStorage.getItem(bp.LAST_DAY_KEY);
+    var d = new Date();
+    var curr_day = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+
+    document.getElementById('day_conns').innerHTML =
+        (last_day === curr_day && day_conns) ? day_conns : 0;
+    document.getElementById('day_data_transd').innerHTML =
+        (last_day === curr_day && day_data_transd) ? day_data_transd / 1000 : 0;
 }
