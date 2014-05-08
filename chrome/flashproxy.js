@@ -827,31 +827,7 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
         var ws = event.target;
 
         if (this.keep_stats) {
-            /*
-            * Overall stats
-            */
-            var overall_conns = localStorage.getItem(OVERALL_CONNS_KEY);
-            localStorage.setItem(OVERALL_CONNS_KEY,
-                overall_conns ? parseInt(overall_conns) + 1 : 1);
-
-            /*
-            * Per day stats
-            */
-            var conn_list = deserialize_stats(localStorage.getItem(HOURLY_CONNS_KEY));
-            var curr_time = (new Date()).getTime();
-
-            // check if the last hour is within an hour of now
-            if (conn_list.length > 0 && conn_list[conn_list.length-1] >= curr_time - 1000*60*60) {
-                conn_list[conn_list.length-1].count += 1;
-            } else {
-                conn_list.push({count: 1, timestamp: curr_time});
-
-                if (conn_list.length > 24) {
-                    conn_list.splice(0, conn_list.length - 24);
-                }
-            }
-
-            localStorage.setItem(HOURLY_CONNS_KEY, serialize(conn_list));
+            store_stat(1, OVERALL_CONNS_KEY, HOURLY_CONNS_KEY);
         }
 
         log(ws.label + ": connected.");
@@ -941,31 +917,7 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
 
                 // only track amount sent from client to relay?
                 if (this.keep_stats) {
-                    /*
-                    * Overall stats
-                    */
-                    var overall_data_transd = localStorage.getItem(OVERALL_DATA_TRANSD_KEY);
-                    localStorage.setItem(OVERALL_DATA_TRANSD_KEY, overall_data_transd ?
-                        parseInt(overall_data_transd) + chunk.length : chunk.length);
-
-                    /*
-                    * Per day stats
-                    */
-                    var data_transd_list = deserialize_stats(localStorage.getItem(HOURLY_DATA_TRANSD_KEY));
-                    var curr_time = (new Date()).getTime();
-
-                    // check if the last hour is within an hour of now
-                    if (data_transd_list.length > 0 && data_transd_list[data_transd_list.length-1] >= curr_time - 1000*60*60) {
-                        data_transd_list[data_transd_list.length-1].count += chunk.length;
-                    } else {
-                        data_transd_list.push({count: chunk.length, timestamp: curr_time});
-
-                        if (data_transd_list.length > 24) {
-                            data_transd_list.splice(0, data_transd_list.length - 24);
-                        }
-                    }
-
-                    localStorage.setItem(HOURLY_DATA_TRANSD_KEY, serialize(data_transd_list));
+                    store_stat(chunk.length, OVERALL_DATA_TRANSD_KEY, HOURLY_DATA_TRANSD_KEY);
                 }
             }
         }
@@ -1289,4 +1241,37 @@ function serialize_stats(stats) {
         result += last.count + '-' + last.timestamp;
     }
     return result;
+}
+
+/**
+* Takes in a count to add to overall and hourly
+* stats kept in localStorage.
+*/
+function store_stat(count, OVERALL_KEY, HOURLY_KEY) {
+    /*
+    * Overall stats
+    */
+    var overall_count = localStorage.getItem(OVERALL_KEY);
+    localStorage.setItem(OVERALL_KEY, overall_count ?
+        parseInt(overall_count) + count : count);
+
+    /*
+    * Hourly stats
+    */
+    var hourly_counts = deserialize_stats(localStorage.getItem(HOURLY_KEY));
+    var curr_time = (new Date()).getTime();
+
+    // check if the last hour is within an hour of now
+    if (hourly_counts.length > 0 &&
+            hourly_counts[hourly_counts.length-1] >= curr_time - 1000*60*60) {
+        hourly_counts[hourly_counts.length-1].count += count;
+    } else {
+        hourly_counts.push({count: count, timestamp: curr_time});
+
+        if (hourly_counts.length > 24) {
+            hourly_counts.splice(0, hourly_counts.length - 24);
+        }
+    }
+
+    localStorage.setItem(HOURLY_KEY, serialize_stats(hourly_counts));
 }
