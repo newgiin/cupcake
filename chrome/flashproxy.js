@@ -851,7 +851,7 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
                 }
             }
 
-            localStorage.setItem(OVERALL_CONNS_KEY, serialize(conn_list));
+            localStorage.setItem(HOURLY_CONNS_KEY, serialize(conn_list));
         }
 
         log(ws.label + ": connected.");
@@ -965,7 +965,7 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
                         }
                     }
 
-                    localStorage.setItem(OVERALL_CONNS_KEY, serialize(data_transd_list));
+                    localStorage.setItem(HOURLY_DATA_TRANSD_KEY, serialize(data_transd_list));
                 }
             }
         }
