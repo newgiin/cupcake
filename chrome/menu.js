@@ -7,7 +7,8 @@ function main() {
     var overall_conns = localStorage.getItem(bp.OVERALL_CONNS_KEY);
     var overall_data_transd = localStorage.getItem(bp.OVERALL_DATA_TRANSD_KEY);
     document.getElementById('overall_conns').innerHTML = overall_conns ? overall_conns : 0;
-    document.getElementById('overall_data_transd').innerHTML = overall_data_transd ? overall_data_transd / 1024 : 0;
+    document.getElementById('overall_data_transd').innerHTML =
+        overall_data_transd ? (overall_data_transd / 1024).toFixed(2) : 0;
 
     var conns_list = bp.deserialize_stats(localStorage.getItem(bp.HOURLY_CONNS_KEY));
     var data_transd_list = bp.deserialize_stats(localStorage.getItem(bp.HOURLY_DATA_TRANSD_KEY));
@@ -30,5 +31,5 @@ function main() {
     }
 
     document.getElementById('day_conns').innerHTML = day_conns;
-    document.getElementById('day_data_transd').innerHTML = day_data_transd / 1024;
+    document.getElementById('day_data_transd').innerHTML = (day_data_transd / 1024).toFixed(2);
 }
