@@ -94,9 +94,8 @@ var HEADLESS = typeof(document) === "undefined";
 var OVERALL_CONNS_KEY = 'FLASHPROXY_overall_connections';
 var OVERALL_DATA_TRANSD_KEY = 'FLASHPROXY_overall_data_transd';
 
-var LAST_DAY_KEY = 'FLASHPROXY_last_day';
-var DAY_CONNS_KEY = 'FLASHPROXY_day_connections';
-var DAY_DATA_TRANSD_KEY = 'FLASHPROXY_day_data_transd';
+var HOURLY_CONNS_KEY = 'FLASHPROXY_hourly_conns';
+var HOURLY_DATA_TRANSD_KEY = 'FLASHPROXY_hourly_data_transd';
 
 var cookies;
 if (HEADLESS) {
@@ -838,19 +837,21 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
             /*
             * Per day stats
             */
-            var last_day = localStorage.getItem(LAST_DAY_KEY);
-            var d = new Date();
-            var curr_day = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+            var conn_list = deserialize_stats(localStorage.getItem(HOURLY_CONNS_KEY));
+            var curr_time = (new Date()).getTime();
 
-            if (last_day !== curr_day) {
-                localStorage.setItem(LAST_DAY_KEY, curr_day);
-                localStorage.removeItem(DAY_CONNS_KEY);
-                localStorage.removeItem(DAY_DATA_TRANSD_KEY);
+            // check if the last hour is within an hour of now
+            if (conn_list.length > 0 && conn_list[conn_list.length-1] >= curr_time - 1000*60*60) {
+                conn_list[conn_list.length-1].count += 1;
+            } else {
+                conn_list.push({count: 1, timestamp: curr_time});
+
+                if (conn_list.length > 24) {
+                    conn_list.splice(0, conn_list.length - 24);
+                }
             }
 
-            var day_conns = localStorage.getItem(DAY_CONNS_KEY);
-            localStorage.setItem(DAY_CONNS_KEY,
-                day_conns ? parseInt(day_conns) + 1 : 1);
+            localStorage.setItem(OVERALL_CONNS_KEY, serialize(conn_list));
         }
 
         log(ws.label + ": connected.");
@@ -950,19 +951,21 @@ function ProxyPair(client_addr, relay_addr, rate_limit, keep_stats) {
                     /*
                     * Per day stats
                     */
-                    var last_day = localStorage.getItem(LAST_DAY_KEY);
-                    var d = new Date();
-                    var curr_day = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate();
+                    var data_transd_list = deserialize_stats(localStorage.getItem(HOURLY_DATA_TRANSD_KEY));
+                    var curr_time = (new Date()).getTime();
 
-                    if (last_day !== curr_day) {
-                        localStorage.setItem(LAST_DAY_KEY, curr_day);
-                        localStorage.removeItem(DAY_CONNS_KEY);
-                        localStorage.removeItem(DAY_DATA_TRANSD_KEY);
+                    // check if the last hour is within an hour of now
+                    if (data_transd_list.length > 0 && data_transd_list[data_transd_list.length-1] >= curr_time - 1000*60*60) {
+                        data_transd_list[data_transd_list.length-1].count += chunk.length;
+                    } else {
+                        data_transd_list.push({count: chunk.length, timestamp: curr_time});
+
+                        if (data_transd_list.length > 24) {
+                            data_transd_list.splice(0, data_transd_list.length - 24);
+                        }
                     }
 
-                    var day_data_transd = localStorage.getItem(DAY_DATA_TRANSD_KEY);
-                    localStorage.setItem(DAY_DATA_TRANSD_KEY, day_data_transd ?
-                        parseInt(day_data_transd) + chunk.length : chunk.length);
+                    localStorage.setItem(OVERALL_CONNS_KEY, serialize(data_transd_list));
                 }
             }
         }
@@ -1260,4 +1263,30 @@ function flashproxy_badge_insert() {
     e.parentNode.appendChild(fp.badge_elem);
 
     return fp;
+}
+
+function deserialize_stats(str) {
+    if (!str) {
+        return [];
+    }
+    var result = [];
+    var items = str.split(',');
+    for (var i = 0; i < items.length; i++) {
+        var pair = items[i].split('-');
+        result.push({count: parseInt(pair[0]), timestamp: parseInt(pair[1])});
+    }
+
+    return result;
+}
+
+function serialize_stats(stats) {
+    result = '';
+    for (var i = 0; i < stats.length - 1; i++) {
+        result += stats[i].count + '-' + stats[i].timestamp + ',';
+    }
+    if (stats.length > 0) {
+        var last = stats[stats.length-1];
+        result += last.count + '-' + last.timestamp;
+    }
+    return result;
 }
